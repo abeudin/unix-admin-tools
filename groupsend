@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# make a symlink to this script like groupsend_users and pipe a mail into it
+# the mail will be sent to all local users in the group
+#
+# Example: put the following line in /etc/aliases
+#  users:  |/usr/local/bin/groupsend_users
+# groupsend_users is a symlink to this script. so all mails to users@localhost will be send to all members of the users group
+
+GROUP=`echo $0 | sed 's/.*groupsend_\(.*\)/\1/g'`
+/usr/sbin/sendmail `grep -e ^$GROUP: /etc/group | cut -d : -f 4 | tr ',' ' '`
