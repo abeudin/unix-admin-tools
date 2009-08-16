@@ -7,5 +7,9 @@
 #  users:  |/usr/local/bin/groupsend_users
 # groupsend_users is a symlink to this script. so all mails to users@localhost will be send to all members of the users group
 
-GROUP=`echo $0 | sed 's/.*groupsend_\(.*\)/\1/g'`
-/usr/sbin/sendmail `grep -e ^$GROUP: /etc/group | cut -d : -f 4 | tr ',' ' '`
+TARGETGROUP=`echo $0 | sed 's/.*groupsend_\(.*\)/\1/g'`
+GROUP=`grep -e ^$TARGETGROUP: /etc/group`
+GROUP_ID=`echo $GROUP | cut -d : -f 3`
+USERS_IN_GROUPFILE=`echo $GROUP | cut -d : -f 4 | tr ',' ' '`
+USERS_IN_PASSWDFILE=`cat /etc/passwd|cut -d : -f 1,4|grep -e ":$GROUP_ID$" | cut -d : -f 1`
+/usr/sbin/sendmail $USERS_IN_GROUPFILE $USERS_IN_PASSWDFILE
