@@ -20,4 +20,7 @@ end
 Etc.endgrent()
 Etc.endpwent()
 
-`echo "#{mail.raw_source}" | sendmail #{recipient.uniq.join(" ")}`
+mail.to = []
+mail.bcc = recipients.uniq
+mail.delivery_method :sendmail
+mail.deliver!
