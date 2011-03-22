@@ -1,4 +1,4 @@
-# Which databases should be backuped? Options are "mysql", "postgres" and "ejabberd" at the moment.
+# Which database-systems should be backuped? Options are "mysql", "postgres" and "ejabberd" at the moment.
 #  MySQL needs mysql_user and mysql_pass set
 #  Postgres needs the user which runs the backupscript to be a postgres-superuser. You can make root a postgres-superuser by issuing "createuser root"
 #  Ejabberd needs ?
@@ -7,5 +7,8 @@ databases="mysql postgres ejabberd"
 # MySQL user
 mysql_user="root"
 
-#MmySQL password
+# MySQL password
 mysql_pass=""
+
+# Backup-Dir
+backup_basedir="/var/backups/dbdumps"

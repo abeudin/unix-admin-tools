@@ -11,6 +11,7 @@
 #
 #   v1.0	initial release
 #   v1.1	fixed an issue which prevented old files from being deleted
+#   v1.2	allow override of permissions and owner
 #
 
 # ensure good permissions:
@@ -27,13 +28,15 @@ if [[ $1 = "-f" || $1 = "--force" ]]; then
 	force_backup="true"
 fi
 
-# Konfiguration
+# Configuration
 backup_basedir="/var/backups/dbdumps"
 databases=""
 mysql_user="root"
 mysql_pass=""
+backup_user="root"
+backup_permissions="600"
 
-## Backupzeiten
+## Configuration: what to keep
 monthly_backups=12 # keep 12 monthly backups (1 year)
 weekly_backups=12 # keep 12 weekly backups (3 months)
 daily_backups=31 # daily 31 backups (1 month)
@@ -98,6 +101,10 @@ function dump_zip_md5 {
 	gzip -f -9 "$dump_file"
 	echo " checksum"
 	md5sum "$dump_file.gz" > "$dump_file.gz.md5"
+	
+	# apply permissions
+	chown $backup_user $dump_file.gz $dump_file.gz.md5
+	chmod $backup_permissions $dump_file.gz $dump_file.gz.md5
 }
 
 if [[ $daily_backups = 0 ]]; then
