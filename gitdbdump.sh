@@ -8,7 +8,7 @@ function list_mysql {
 function dump_mysql {
 	db_name=$1
 	dump_file=$2
-	mysqldump --extended-insert $db_name > "$dump_file"
+	mysqldump --extended-insert=false $db_name > "$dump_file"
 }
 
 function list_postgres {
@@ -59,17 +59,13 @@ rm -Rf $backup_basedir/*
 # dump
 for db in $databases; do
 	echo "= dumping $db databases"
+	dump_dir="$backup_basedir/$db/"
+	if [[ ! -d "$dump_dir" ]]; then
+		mkdir -p $dump_dir
+	fi
 	for db_name in `list_$db`; do
 		echo "-- dumping $db_name"
-
-		# see if dump_dir exists and create it.
-		dump_dir="$backup_basedir/$db/$db_name"
-		if [[ ! -d "$dump_dir" ]]; then
-			mkdir -p $dump_dir
-		fi
-
 		dump_file="$dump_dir/$db_name.sql"
-
 		dump_$db $db_name $dump_file
 		
 	done
