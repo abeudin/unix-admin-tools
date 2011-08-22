@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # DBMS
 function list_mysql {
