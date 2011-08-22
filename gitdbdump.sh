@@ -2,7 +2,7 @@
 
 # DBMS
 function list_mysql {
-	echo "show databases;" | mysql --column-names=false
+	echo "show databases;" | mysql --column-names=false | grep -v information_schema
 }
 
 function dump_mysql {
