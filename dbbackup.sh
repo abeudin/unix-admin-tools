@@ -45,7 +45,7 @@ daily_backups=31 # daily 31 backups (1 month)
 if [[ -e "/etc/dbbackup.conf" ]]; then
     source /etc/dbbackup.conf
 else
-    echo "Warning: /etc/dbbackup.conf not found" >&2 
+    echo "Warning: /etc/dbbackup.conf not found"
 fi
 
 # BaseDir anlegen

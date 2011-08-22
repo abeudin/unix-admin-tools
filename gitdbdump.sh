@@ -40,7 +40,7 @@ backup_permissions="600"
 if [[ -e "/etc/dbbackup.conf" ]]; then
     source /etc/dbbackup.conf
 else
-    echo "Warning: /etc/dbbackup.conf not found" >&2 
+    echo "Warning: /etc/dbbackup.conf not found" 
 fi
 
 # create and enter BaseDir
