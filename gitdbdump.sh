@@ -32,13 +32,13 @@ fi
 
 # DefaultConfiguration
 databases="mysql"
-backup_basedir="/var/backups/dbdumps/"
+backup_basedir="/var/backups/dbdumps.git/"
 backup_user="root"
 backup_permissions="600"
 
 # load Configuration
-if [[ -e "/etc/dbbackup.conf" ]]; then
-    source /etc/dbbackup.conf
+if [[ -e "/etc/gitdbdump.conf" ]]; then
+    source /etc/gitdbdump.conf
 else
     echo "Warning: /etc/dbbackup.conf not found" 
 fi
