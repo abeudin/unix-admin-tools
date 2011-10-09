@@ -8,7 +8,7 @@ function list_mysql {
 function dump_mysql {
 	db_name=$1
 	dump_file=$2
-	mysqldump --extended-insert=false $db_name > "$dump_file"
+	mysqldump --comments=0 --extended-insert=false $db_name > "$dump_file"
 }
 
 function list_postgres {
