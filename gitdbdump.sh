@@ -76,7 +76,6 @@ echo "= adding to repository"
 git add *
 COMMIT_MSG="`date`"
 git commit -a -m "$COMMIT_MSG"
-git gc
 
 # Fix perms
 chown -R $backup_user $backup_basedir
