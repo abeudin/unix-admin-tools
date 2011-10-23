@@ -53,6 +53,13 @@ cd $backup_basedir
 # git init
 git init
 
+# better git gc performance
+git config pack.threads 1
+git config pack.windowMemory 100m
+git config pack.window 15
+git config core.compression 9
+
+
 # empty repo
 rm -Rf $backup_basedir/*
 
@@ -76,6 +83,7 @@ echo "= adding to repository"
 git add *
 COMMIT_MSG="`date`"
 git commit -a -m "$COMMIT_MSG"
+git gc
 
 # Fix perms
 chown -R $backup_user $backup_basedir
