@@ -1,0 +1,197 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+# Perl Core Modules
+use Term::ANSIColor;    # for colours
+use POSIX qw(nice);     # for nice
+use Getopt::Long;       # for command line options
+use Pod::Usage;         # for help output
+use Time::localtime;    # for log filename
+POSIX::nice(19);        # run with low priority
+
+use Data::Dumper;       # for debugging only
+
+# Buck Modules
+use lib "checks";       # include security checks
+use lib "checks/lib";   # inclue checks libraries
+use lib "lib";          # include general buck library
+
+# VERSION
+my $VERSION = '0.6';
+
+# start time
+my $start_time = time();
+
+# Runned by root?
+if ( $> != 0 ) {
+    print STDERR "Only root can run this program\n";
+    exit 1;
+}
+
+# Read Options from command line (--help, --log and --output), run buck --help for more information
+my $man        = 0;
+my $help       = 0;
+my $opt_output = '2';    # verbose level: via --output=X   2 is default
+my $opt_log    = '';     # Log? via --log
+my $opt_checksum = 0;
+GetOptions(
+    'output=i'         => \$opt_output,
+    'log'              => \$opt_log,
+    'help|?'           => \$help,
+     man               => \$man,
+    'make-checksums'   => \$opt_checksum,
+);
+
+# Output Help if needed via pod2usage
+pod2usage(
+    -message => "\n",
+    -exitval => 0,
+    -verbose => 1
+) if $help;
+pod2usage( -exitstatus => 0, -verbose => 2 ) if $man;
+
+# Read Config file
+my $config_file = "conf/buck-security.conf";
+{ package Config; do $config_file }
+
+if ($opt_checksum != 0) {
+    use mkchecksum;
+    mkchecksum->MkChecksum();
+    exit;
+}
+
+
+# Number of checks
+my $nr_of_checks = @Config::checks;
+
+# Print Header
+print color 'bold blue';
+my $line = "###########################";
+print "\n\n\n$line\n#   buck-security $VERSION     #\n$line\n";
+print
+"\nWe will run $nr_of_checks security checks now.\nThis may take a while...\n";
+
+my $log;    # String which the Log is written to, later written to fike
+
+# sub which decides if a log should be written (if --log was given) or not, used instead of print
+sub logprint {
+    my $string = shift;    # string given to sub
+
+    #print and log
+    if ($opt_log) {
+        $log .= $string;    # add string to log string
+        print $string;
+    }
+
+    #print only
+    else {
+        print $string;
+    }
+    return;
+}
+
+# Execute the checks specified in the config file
+my $nr = 1;
+foreach (@Config::checks)
+{    # reads the array from the config file with name of checks
+    my $pack = $_;               # Package-Name
+    my $mod  = $pack . '.pm';    # Module Name
+    require $mod;
+    my ( $title, $result, $help_msg, $details ) =
+      $pack->check($opt_output);    # run check sub in check module
+    $title = sprintf( "%-45s", "[*] CHECK $nr: $title" );
+    logprint("\n\n$title");    # print title of check
+    if ( $result ne 0 ) {    # if something found print [WARNING]
+        print color 'bold red';
+        logprint("[ WARNING ]\n");
+        print color 'reset';    # normal
+        if ($details) {
+            logprint("$help_msg$line$line\n");
+            logprint("$details\n");
+        }
+    }
+    else {                      # if nothing found print [OK]
+        print color 'bold green';
+        logprint("[ OK ]\n");
+    }
+    print color 'bold blue';
+
+    $nr++;
+}
+
+# end time
+my $end_time = time();
+
+# print time it took
+print "\n\n$line\n###   CHECKS FINISHED   ###\n";
+print "time taken was " . ( $end_time - $start_time ) . " seconds\n";
+print $line;
+
+# Footer
+print
+"\n\nATTENTION:\nbuck-security is still under heavy development, consider this a beta version.\nYour feedback is very welcome, please send it to maba4891\@users.sourceforge.net.\nTo get help run './buck --help' or visit http://www.buck-security.org/ \n\n\n";
+
+print color 'reset';
+
+# LOGGING
+if ($opt_log) {
+
+    # Get Date for filename of log
+    my $year  = localtime->year() + 1900;
+    my $day   = sprintf( "%02d", localtime->mday() );
+    my $month = localtime->mon() + 1;
+    $month = sprintf( "%02d", $month );
+    my $hour  = sprintf( "%02d", localtime->hour() );
+    my $min   = sprintf( "%02d", localtime->min() );
+    my $sec   = sprintf( "%02d", localtime->sec() );
+    my $date  = $day . $month . $year . "_$hour-$min-$sec";
+
+    # Write Log string to file
+    my $logfile = "logs/buck$date.log";
+    open my $LOG, '>', $logfile or die $!;
+    print $LOG $log;
+    close($LOG);
+}
+
+# Documentation
+
+# POD
+
+__DATA__
+
+=head1 NAME
+
+Buck Security
+
+=head1 SYNOPSIS
+
+
+ --help
+ show help
+
+ --make-checksum
+ create checksums of important programs to recheck them with buck-security
+ later
+
+ --log
+ logs output in logs-directory
+
+ --output=1
+ short output, show result only
+
+ --output=2 (default)
+ default output, show details (which files/dirs where found f.e.)
+
+ --output=3
+ long output, also show errors
+
+
+
+=head1 FURTHER INFORMATION
+
+To get further information visit http://www.buck-security.org or mail to maba4891@users.sourceforge.net
+
+=cut
+
