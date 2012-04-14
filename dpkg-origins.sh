@@ -9,7 +9,12 @@ end
 
 repos = {}
 
-list = `dpkg-query -l`.split("\n")
+if ARGV[0].nil?
+  list = `dpkg-query -l`.split("\n")
+else
+  list = `dpkg-query -l *#{ARGV[0]}*`.split("\n")
+end
+
 list = list[5..-1]
 list.each do |line|
     pkg = line.split(" ")
@@ -45,10 +50,8 @@ end
 repo_keys.each do |reponame|
     if reponame.empty?
         puts ""
-        puts ""
         puts "not found in any repository"
     else
-        puts ""
         puts ""
         puts "#{reponame}:"
     end
