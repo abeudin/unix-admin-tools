@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 arch = `lscpu`.split("\n")[0].split(" ")[1]
 if arch == "x86_64"

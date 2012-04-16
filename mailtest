@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+
+require "rubygems"
+require "slop"
+require "mail"
+require "fcntl"
+require "lumberjack"
+require "lumberjack_syslog_device"
+
+## Logging
+syslog_device = Lumberjack::SyslogDevice.new(:facility => 'mailtest')
+logger = Lumberjack::Logger.new(syslog_device)
+
+## Option Parsing
+bannerMsg = "Usage:
+    Mailtest works in two modes: called with an interval and one or multiple hosts to send
+    and check for heartbeat-emails or with no options at all, but a mail piped into it.
+
+Send/check mode (should be a cronjob):
+    mailtest -h mailtest@yourhost.org,mailtest@yourhost2.org -i 24
+   
+Receive mode (set in /etc/aliases):
+    mailtest: |/usr/local/bin/mailtest
+    
+Options:"
+opts = Slop.new(:help => true, :strict => true) do
+  banner bannerMsg
+  on :h, :hosts, "email-adresses of hosts to contact, comma separated", :argument => true
+  on :i, :interval, "notify/check interval in hours", :argument => true
+end
+begin
+  opts.parse
+rescue Slop::Error
+  puts opts
+  exit(1)
+end
+
+## MAIN
+if !opts.hosts? and !opts.interval?
+  # processing mail
+  if (ARGV.length != 0 || STDIN.fcntl(Fcntl::F_GETFL, 0) != 0)
+    puts opts
+    exit(1)
+  end
+  mail = Mail.new(ARGF.read)
+  logger.info "got mail"
+  puts mail.from
+else
+  # send/check
+  if (ARGV.length != 4)
+    puts opts
+    exit(1)
+  end
+end
+

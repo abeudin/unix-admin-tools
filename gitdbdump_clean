@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 def connect_commits(left,right)
   puts "connecting #{left} to #{right}"
