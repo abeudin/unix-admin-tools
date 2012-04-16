@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+
+list = `dpkg-query -l|grep ^rc`.split("\n")
+list = list.map {|line| line.split(" ")[1]}
+pkgs = list.join(" ")
+
+system("apt-get remove --purge #{pkgs}")

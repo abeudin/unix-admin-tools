@@ -4,12 +4,14 @@ require "rubygems"
 require "slop"
 require "mail"
 require "fcntl"
-require "lumberjack"
-require "lumberjack_syslog_device"
 
 ## Logging
-syslog_device = Lumberjack::SyslogDevice.new(:facility => 'mailtest')
-logger = Lumberjack::Logger.new(syslog_device)
+def error(msg)
+  system("logger -t mailtest #{ksg} -p user.error")
+end
+def info(msg)
+  system("logger -t mailtest #{ksg} -p user.info")
+end
 
 ## Option Parsing
 bannerMsg = "Usage:
@@ -43,8 +45,9 @@ if !opts.hosts? and !opts.interval?
     exit(1)
   end
   mail = Mail.new(ARGF.read)
-  logger.info "got mail"
-  puts mail.from
+  sender = mail.from
+  subject = mail.subject
+  logger.info "received mail from '#{sender}', subject '#{subject}'"
 else
   # send/check
   if (ARGV.length != 4)
