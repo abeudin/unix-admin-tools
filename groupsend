@@ -6,10 +6,11 @@ require 'etc'
 
 # parse Mail
 mail = Mail.new(ARGF.read)
-group = Etc.getgrnam(mail['delivered_to'].value.gsub(/@.*/,""))
-group = "admin" if group == "root"
+group_name = mail['delivered_to'].value.gsub(/@.*/,"")
+group_name = "admin" if group_name == "root"
 
 # recipients in group
+group = Etc.getgrnam(group_name)
 recipients = group.mem
 
 # recipients which have target-group as their homegroup
