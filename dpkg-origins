@@ -1,21 +1,14 @@
 #!/usr/bin/env ruby
 
-arch = `lscpu`.split("\n")[0].split(" ")[1]
-if arch == "x86_64"
-    arch = "amd64"
-else
-    arch = "i386"
-end
-
-repos = {}
-
-if ARGV[0].nil?
+filter = ARGV[0]
+if filter.nil?
   list = `dpkg-query -l`.split("\n")
 else
-  list = `dpkg-query -l *#{ARGV[0]}*`.split("\n")
+  list = `dpkg-query -l #{filter}`.split("\n")
 end
-
 list = list[5..-1]
+
+repos = {}
 list.each do |line|
     pkg = line.split(" ")
     status = pkg[0]
@@ -24,16 +17,17 @@ list.each do |line|
     desc = pkg[3..-1].join(" ")
     
     if (status.include? "i")
-        result = `grep "/#{name}_#{version}_.*.deb" /var/lib/apt/lists/*#{arch}*Packages*`     
         package = {:name => name, :version => version, :desc => desc}
         
+        result = `grep "/#{name}_#{version}_.*.deb" /var/lib/apt/lists/*Packages*`  
         if (result.empty?)
             repos[""] = [] if repos[""].nil?
             repos[""] << package
         else
             result = result.split("\n")
-            result.each do |r|
-                reponame = r.gsub(/_binary.*/,"").gsub("/var/lib/apt/lists/","")
+            result = result.map {|r| r.gsub(/_binary.*/,"").gsub("/var/lib/apt/lists/","")}
+            result = result.uniq
+            result.each do |reponame|
                 repos[reponame] = [] if repos[reponame].nil?
                 repos[reponame] << package
             end
@@ -47,6 +41,7 @@ if repo_keys.include? ""
     repo_keys << ""
 end
 
+puts "Filter: #{filter}" unless filter.nil?
 repo_keys.each do |reponame|
     if reponame.empty?
         puts ""
