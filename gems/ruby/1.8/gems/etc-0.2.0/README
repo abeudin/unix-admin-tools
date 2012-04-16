@@ -1,0 +1,19 @@
+SYNOPSIS
+
+  read-only interface to /etc/passwd and /etc/groups
+
+DOCS
+
+  see sample/a.rb
+
+HISTORY
+
+0.2.0 :
+  - gemified
+  - fixed installer bug
+
+0.0.1 :
+  - eliminated warnings under 1.8
+
+0.0.0 :
+  - initial version
