@@ -3,7 +3,7 @@
 require "fileutils"
 
 # default values
-BACKUP_DIR = "/Users/fabian/var/backups/dbdumps.git"
+BACKUP_DIR = "/var/backups/dbdumps.git"
 DATE_FORMAT = "%Y-%m-%d %H:%M %Z"
 PERMISSIONS = [:owner]
 USAGE = "Usage: 
