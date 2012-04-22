@@ -3,7 +3,7 @@
 scripts = ["gitdbdump","dpkg-origins","dpkg-purge","mailtest","groupsend"]
 target = "/usr/local/bin/"
 
-dir = File.dirname(File.absolute_path(__FILE__))
+dir = File.dirname(File.expand_path(__FILE__))
 scripts.each do |script|
 
     link_from = File.join(target,script)
