@@ -78,7 +78,7 @@ def dump_all
   end
 end
 
-def git_commit_all(msg)
+def git_commit(msg)
   git_cmd "add ."
   git_cmd "commit -a -m '#{msg}'"
 end
