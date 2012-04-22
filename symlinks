@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+
+scripts = ["gitdbdump","dpkg-origins","dpkg-purge","mailtest","groupsend"]
+target = "/usr/local/bin/"
+
+dir = File.dirname(File.absolute_path(__FILE__))
+scripts.each do |script|
+
+    link_from = File.join(target,script)
+    link_to = File.join(dir,script)
+    puts "symlinking #{link_from} to #{link_to}"
+    begin
+        File.symlink(link_to, link_from)
+    rescue Errno::EEXIST
+    rescue Errno::EACCES
+        puts "Permission denied"
+    end
+
+end

@@ -1,5 +1,12 @@
 #!/usr/bin/env ruby
 
+# TODO
+# - send mail every <n> hours to mailhosts in config-file
+# - if mail is received check if they come in steady
+# - option for expecting hosts -> error if aliases is not setup
+# - option whom to notify
+
+
 require "pathname"
 ENV["BUNDLE_GEMFILE"] = File.join(Pathname.new(__FILE__).realpath.dirname, "Gemfile")
 require "rubygems"
