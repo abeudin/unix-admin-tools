@@ -85,7 +85,7 @@ end
 
 def git_commit_checkpoint(msg)
   git_cmd "add ."
-  git_cmd "commit -a --allow-empty -m '#{msg} - #{Time.now.strftime(DATE_FORMAT)}'"
+  git_cmd "commit -a --allow-empty -m '#{Time.now.strftime(DATE_FORMAT)} - #{msg}'"
 end
 
 # MAIN
@@ -101,6 +101,7 @@ case ARGV[0]
     printUsageAndExit unless ARGV.length == 2  
     name = ARGV[1]
     puts "creating checkpoint '#{name}':\n"
+    dump_all
     git_commit_checkpoint name
 
   when "clean"
