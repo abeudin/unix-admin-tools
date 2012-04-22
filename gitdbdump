@@ -68,11 +68,11 @@ def dump_all
   FileUtils.rm_rf(Dir.glob(File.join(BACKUP_DIR,"*")), :secure => true)
   
   installed_rdbms.each do |rdbms|
-    puts "* #{rdbms} databases:"
+    puts " * #{rdbms} databases:"
     dump_dir = File.join(BACKUP_DIR, rdbms)
     FileUtils.mkdir_p dump_dir
     send("list_#{rdbms}").each do |db|
-      puts " * dumping #{db}"
+      puts "  * dumping #{db}"
       send("dump_#{rdbms}",db,File.join(dump_dir,"#{db}.sql"))
     end
   end
@@ -93,14 +93,14 @@ end
 printUsageAndExit unless ARGV.length >= 1
 case ARGV[0]
   when "backup"
-    puts "running regular backup:\n"
+    puts "running regular backup:\n\n"
     dump_all
     git_commit_regular
   
   when "checkpoint"
     printUsageAndExit unless ARGV.length == 2  
     name = ARGV[1]
-    puts "creating checkpoint '#{name}':\n"
+    puts "creating checkpoint '#{name}':\n\n"
     dump_all
     git_commit_checkpoint name
 
