@@ -35,7 +35,8 @@ def installed_rdbms
 end
 
 def list_mysql
-  `echo "show databases;" | mysql --column-names=false`
+  list = `echo "show databases;" | mysql --column-names=false`
+  list.split("\n")
 end
 
 def dump_mysql(db,file)
