@@ -42,7 +42,7 @@ def dump_mysql(db,file)
 	`mysqldump --comments=0 --extended-insert=false #{db} > "#{file}"`
 end
 
-def list_postgres
+def list_postgresql
 	list = `echo "SELECT datname FROM pg_database;" | psql -t postgres -A`
 	if $?.success?
 	  return list.split("\n")
@@ -52,7 +52,7 @@ def list_postgres
   end
 end
 
-def dump_postgres(db,file)
+def dump_postgresql(db,file)
 	`pg_dump #{db} > "#{file}"`
 end
 
@@ -68,14 +68,17 @@ end
 printUsageAndExit unless ARGV.length >= 1
 case ARGV[0]
 when "backup"
-  puts "doing backup"
+  puts "running backup:"
   
   FileUtils.mkdir_p BACKUP_DIR
   git_cmd "init"
   installed_rdbms.each do |rdbms|
-    FileUtils.mkdir_p File.join(BACKUP_DIR, rdbms)
+    puts "* #{db} databases:"
+    dump_dir = File.join(BACKUP_DIR, rdbms)
+    FileUtils.mkdir_p dump_dir
     send("list_#{rdbms}").each do |db|
-      puts db
+      puts " * dumping #{db}"
+      send("dump_#{rdbms}",db,File.join(dump_dir,"#{db}.sql"))
     end
   end
   
