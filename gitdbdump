@@ -73,7 +73,7 @@ when "backup"
   FileUtils.mkdir_p BACKUP_DIR
   git_cmd "init"
   installed_rdbms.each do |rdbms|
-    puts "* #{db} databases:"
+    puts "* #{rdbms} databases:"
     dump_dir = File.join(BACKUP_DIR, rdbms)
     FileUtils.mkdir_p dump_dir
     send("list_#{rdbms}").each do |db|
