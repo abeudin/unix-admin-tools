@@ -4,6 +4,7 @@ require "fileutils"
 
 # default values
 BACKUP_DIR = "/Users/fabian/var/backups/dbdumps.git"
+DATE_FORMAT = "%Y-%m-%d %H:%M %Z"
 PERMISSIONS = [:owner]
 USAGE = "Usage: 
 
@@ -23,7 +24,6 @@ def printUsageAndExit
   exit(-1)
 end
 
-# Functions: rdbms
 def installed_rdbms
   installed = []
   `which mysqldump`
@@ -45,7 +45,7 @@ end
 def list_postgresql
 	list = `echo "SELECT datname FROM pg_database;" | psql -t postgres -A`
 	if $?.success?
-	  return list.split("\n")
+	  return list.split("\n").delete("template0")
   else
 	  error("could not connect to postgres")
     return []
@@ -56,22 +56,15 @@ def dump_postgresql(db,file)
 	`pg_dump #{db} > "#{file}"`
 end
 
-# Functions: git
 def git_cmd(command)
   `GIT_DIR="#{File.join(BACKUP_DIR,".git")}" GIT_WORK_TREE="#{BACKUP_DIR}" git #{command}`  
 end
 
-
-
-# MAIN
-
-printUsageAndExit unless ARGV.length >= 1
-case ARGV[0]
-when "backup"
-  puts "running backup:"
-  
+def dump_all
   FileUtils.mkdir_p BACKUP_DIR
   git_cmd "init"
+  FileUtils.rm_rf(Dir.glob(File.join(BACKUP_DIR,"*")), :secure => true)
+  
   installed_rdbms.each do |rdbms|
     puts "* #{rdbms} databases:"
     dump_dir = File.join(BACKUP_DIR, rdbms)
@@ -81,13 +74,31 @@ when "backup"
       send("dump_#{rdbms}",db,File.join(dump_dir,"#{db}.sql"))
     end
   end
+end
+
+def git_commit_all(msg)
+  git_cmd "add ."
+  git_cmd "commit -a -m '#{msg}'"
+end
+
+# MAIN
+
+printUsageAndExit unless ARGV.length >= 1
+case ARGV[0]
+  when "backup"
+    puts "running regular backup:\n"
+    dump_all
+    git_commit(Time.now.strftime(DATE_FORMAT))
   
-when "clean"
-  puts "doing clean"
-when "checkpoint"
-  printUsageAndExit unless ARGV.length == 2
+  when "checkpoint"
+    printUsageAndExit unless ARGV.length == 2  
+    name = ARGV[1]
+    puts "creating checkpoint '#{name}':\n"
+    dump_all
+
+  when "clean"
+    puts "doing clean"
   
-  puts "creating a checkpint"
-else
-  printUsageAndExit
+  else
+    printUsageAndExit
 end
