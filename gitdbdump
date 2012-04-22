@@ -39,7 +39,12 @@ def list_mysql
 end
 
 def dump_mysql(db,file)
-	`mysqldump --comments=0 --extended-insert=false #{db} > "#{file}"`
+  if (db == "information_schema")
+    moreoptions = "--single-transaction"
+  else
+    moreoptions = ""
+  end
+	`mysqldump --comments=0 --extended-insert=false #{moreoptions} #{db} > "#{file}"`
 end
 
 def list_postgresql
