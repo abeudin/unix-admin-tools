@@ -45,7 +45,9 @@ end
 def list_postgresql
 	list = `echo "SELECT datname FROM pg_database;" | psql -t postgres -A`
 	if $?.success?
-	  return list.split("\n").delete("template0")
+	  list = list.split("\n")
+	  list.delete("template0")
+	  return list
   else
 	  error("could not connect to postgres")
     return []
