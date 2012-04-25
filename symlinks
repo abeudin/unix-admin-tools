@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-scripts = ["gitdbdump","dpkg-origins","dpkg-purge","mailtest","groupsend"]
+scripts = ["gitdbdump","dpkg-origins","dpkg-purge","mail2group"]
 target = "/usr/local/bin/"
 
 dir = File.dirname(File.expand_path(__FILE__))

@@ -9,10 +9,10 @@ GEM
       treetop (~> 1.4.8)
     mime-types (1.18)
     polyglot (0.3.3)
-    slop (3.0.4)
     treetop (1.4.10)
       polyglot
       polyglot (>= 0.3.1)
+    uuidtools (2.1.2)
 
 PLATFORMS
   ruby
@@ -20,4 +20,4 @@ PLATFORMS
 DEPENDENCIES
   etc
   mail
-  slop
+  uuidtools
