@@ -1,0 +1,137 @@
+#!/usr/bin/env ruby
+
+require "pathname"
+ENV["BUNDLE_GEMFILE"] = File.join(Pathname.new(__FILE__).realpath.dirname, "Gemfile")
+require "rubygems"
+require "bundler/setup"
+require 'uuidtools'
+require 'mail'
+require 'tempfile'
+require 'etc'
+
+# Constants
+PUBKEY_FILE = "pubkey.asc"
+
+# Functions
+def logError(msg)
+	`logger -p mail.warn -t mail2group "#{msg}"`
+end
+
+def encryptBody(user,body)
+
+	pubkey_file = File.join("/home/",user,PUBKEY_FILE)
+	return nil unless File.readable?(pubkey_file)
+	
+	# Create Temporary Keyring
+	tmp_keyring = Tempfile.new("mailcrypt-kr-")
+	tmp_keyring.close
+
+	# import key
+	output = `gpg --no-default-keyring --keyring=#{tmp_keyring.path} --import #{pubkey_file} 2>&1`
+	keyline = output.split("\n").grep(/gpg: key .*: public key .* imported/)
+	if (keyline.length != 1)
+		logError "found #{keyline.size} keys for user '#{user}', expected exactly 1"	
+		tmp_crypt = nil
+	else
+		key = keyline[0].match(/gpg: key (.*):/)[1]
+
+		# Create Temporary file
+		tmp_crypt = Tempfile.new("mailcrypt-crypt-")
+		tmp_crypt.close
+		tmp_body = Tempfile.new("mailcrypt-body-")
+		tmp_body.write("Content-Transfer-Encoding: 7bit\n")
+		tmp_body.write("Content-Type: text/plain; charset=us-ascii\n\n")
+		tmp_body.write(body)
+		tmp_body.close
+
+		# encrypt
+		gpgCmd = "cat #{tmp_body.path} | gpg --encrypt -r #{key} -a --trust-model=always > #{tmp_crypt.path}"
+		`#{gpgCmd}`
+	
+		File.delete(tmp_body.path)
+	end
+
+	# Delete temp keyring
+	File.delete(tmp_keyring.path)
+	File.delete(tmp_keyring.path + "~")
+
+	tmp_crypt	
+end
+
+def createCryptedMultipartMail(tmp_crypt)
+	boundary = UUIDTools::UUID.random_create
+	mail = Mail.new("Content-Type: multipart/encrypted; boundary=\"#{boundary}\"; protocol=\"application/pgp-encrypted\";")
+
+	# Body
+	mail.body = "
+
+--#{boundary}
+Content-Type: application/pgp-encrypted
+
+Version: 1
+
+--#{boundary}
+Content-Type: application/octet-stream
+
+#{File.read(tmp_crypt.path)}
+
+--#{boundary}--
+
+"
+
+	mail
+end
+
+def getGroupMembers(group_name)
+  group_name = "admin" if group_name == "root"
+
+  # recipients in group
+  group = Etc.getgrnam(group_name)
+  recipients = group.mem
+
+  # recipients which have target-group as their homegroup
+  Etc.passwd do |entry|
+    recipients << entry.name if entry.gid == group.gid
+  end
+
+  # close /etc files
+  Etc.endgrent()
+  Etc.endpwent()
+  
+  recipients.uniq
+end
+
+########################
+##################
+# MAIN 
+#
+#
+
+mail = Mail.new(ARGF.read)
+
+logError("didn't expect '#{mail.header['content_type']}' '#{mail.message_id}'") if mail.header['content_type'].value != "text/plain; charset=us-ascii"
+logError("didn't expect multipart '#{mail.message_id}'") if mail.parts.length != 0
+
+recipients = getGroupMembers(mail['delivered_to'].value.gsub(/@.*/,""))
+recipients.each do |user|
+	tmp_crypt = encryptBody(user, mail.body.to_s)
+	if tmp_crypt.nil?
+		newMail = Mail.new()
+		newMail.body = mail.body
+	else
+		newMail = createCryptedMultipartMail(tmp_crypt)
+	end
+
+	# other stuff
+	newMail.from = mail.from
+	newMail.subject = mail.subject
+	newMail.to = user
+	
+	# send
+	newMail.delivery_method :sendmail
+	newMail.deliver!
+	
+	# Delete temp file
+	File.delete(tmp_crypt.path)
+end
+
