@@ -96,6 +96,9 @@ end
 
 # MAIN
 
+# set umask to 0077
+File.umask(63)
+
 printUsageAndExit unless ARGV.length >= 1
 case ARGV[0]
   when "backup"
