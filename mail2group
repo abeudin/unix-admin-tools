@@ -6,59 +6,85 @@ require "rubygems"
 require "bundler/setup"
 require 'uuidtools'
 require 'mail'
-require 'tempfile'
+require 'open4'
+require "tmpdir"
 require 'etc'
 
-# Constants
+# Configuration / Constants
+FAILED_MAIL_LOG = "/var/log/failed.mail"
 PUBKEY_FILE = "pubkey.asc"
+FORCE_CRYPT_GROUPS = "root admin"
+FORCE_CRYPT_NOTIFICATION = "
+Whoopsie daisy... 
+
+The server is configured to enforce encryption
+so you unfortunately can't read this email.
+
+Please upload your gpg-key into your homedirectory,
+call the file '#{PUBKEY_FILE}' and make sure it is
+world-readable."
 
 # Functions
-def logError(msg)
-	`logger -p mail.warn -t mail2group "#{msg}"`
+def runCmd(cmd,input = nil)
+	output = nil
+	Open4::open4 cmd do |pid, stdin, stdout, stderr|
+		stdin.puts input unless input.nil?
+		stdin.close unless input.nil?
+
+		output = stdout.read.strip
+	end
+
+	output
+end
+
+def L_ERR(msg)
+	runCmd("logger -p mail.error -t mail2group", msg)
+end
+
+def L_DEBUG(msg)
+	runCmd("logger -p mail.debug -t mail2group", msg)
+end
+
+def saveFailedMail(str)
+	File.open(FAILED_MAIL_LOG,"a") { |f| f.write str }
 end
 
 def encryptBody(user,body)
 
 	pubkey_file = File.join("/home/",user,PUBKEY_FILE)
+	L_DEBUG "looking for file #{pubkey_file}"
 	return nil unless File.readable?(pubkey_file)
+	L_DEBUG "keyfile #{pubkey_file} found and readable"
 	
-	# Create Temporary Keyring
-	tmp_keyring = Tempfile.new("mailcrypt-kr-")
-	tmp_keyring.close
+	# Create temp gpg-dir
+	tmpdir_gpg_path = Dir.mktmpdir("mailcrypt")
 
 	# import key
-	output = `gpg --no-default-keyring --keyring=#{tmp_keyring.path} --import #{pubkey_file} 2>&1`
+	L_DEBUG "trying to import key into temporary keyring"
+	output = runCmd "gpg --homedir #{tmpdir_gpg_path} --import #{pubkey_file} 2>&1"
+	L_DEBUG output
+
 	keyline = output.split("\n").grep(/gpg: key .*: public key .* imported/)
 	if (keyline.length != 1)
-		logError "found #{keyline.size} keys for user '#{user}', expected exactly 1"	
-		tmp_crypt = nil
+		L_ERR "found #{keyline.size} keys for user '#{user}', expected exactly 1"	
+		cryptedBody = nil
 	else
 		key = keyline[0].match(/gpg: key (.*):/)[1]
-
-		# Create Temporary file
-		tmp_crypt = Tempfile.new("mailcrypt-crypt-")
-		tmp_crypt.close
-		tmp_body = Tempfile.new("mailcrypt-body-")
-		tmp_body.write("Content-Transfer-Encoding: 7bit\n")
-		tmp_body.write("Content-Type: text/plain; charset=us-ascii\n\n")
-		tmp_body.write(body)
-		tmp_body.close
+		L_DEBUG "imported key #{key} into temporary keyring"
 
 		# encrypt
-		gpgCmd = "cat #{tmp_body.path} | gpg --encrypt -r #{key} -a --trust-model=always > #{tmp_crypt.path}"
-		`#{gpgCmd}`
-	
-		File.delete(tmp_body.path)
+		cryptedBody = runCmd "gpg --homedir #{tmpdir_gpg_path} --encrypt -r #{key} -a --trust-model=always 2>&1", body
+		L_DEBUG cryptedBody
+
 	end
 
-	# Delete temp keyring
-	File.delete(tmp_keyring.path)
-	File.delete(tmp_keyring.path + "~")
+	# Delete temp gpg-dir
+	FileUtils.rm_rf tmpdir_gpg_path
 
-	tmp_crypt	
+	cryptedBody	
 end
 
-def createCryptedMultipartMail(tmp_crypt)
+def createCryptedMultipartMail(cryptedBody)
 	boundary = UUIDTools::UUID.random_create
 	mail = Mail.new("Content-Type: multipart/encrypted; boundary=\"#{boundary}\"; protocol=\"application/pgp-encrypted\";")
 
@@ -73,7 +99,7 @@ Version: 1
 --#{boundary}
 Content-Type: application/octet-stream
 
-#{File.read(tmp_crypt.path)}
+#{cryptedBody}
 
 --#{boundary}--
 
@@ -86,52 +112,95 @@ def getGroupMembers(group_name)
   group_name = "admin" if group_name == "root"
 
   # recipients in group
-  group = Etc.getgrnam(group_name)
-  recipients = group.mem
+  begin
+  	group = Etc.getgrnam(group_name)
+  	recipients = group.mem
 
-  # recipients which have target-group as their homegroup
-  Etc.passwd do |entry|
-    recipients << entry.name if entry.gid == group.gid
+  	# recipients which have target-group as their homegroup
+  	Etc.passwd do |entry|
+  	  recipients << entry.name if entry.gid == group.gid
+  	end
+
+  	recipients = recipients.uniq
+  rescue ArgumentError
+	recipients = nil
   end
 
   # close /etc files
   Etc.endgrent()
   Etc.endpwent()
   
-  recipients.uniq
+  recipients
 end
 
+
+
+
+
 ########################
-##################
+#
 # MAIN 
 #
 #
+########################
 
-mail = Mail.new(ARGF.read)
+input = ARGF.read
+mail = Mail.new(input)
 
-logError("didn't expect '#{mail.header['content_type']}' '#{mail.message_id}'") if mail.header['content_type'].value != "text/plain; charset=us-ascii"
-logError("didn't expect multipart '#{mail.message_id}'") if mail.parts.length != 0
+# we need the content_type later
+content_type = mail.header['content_type']
 
-recipients = getGroupMembers(mail['delivered_to'].value.gsub(/@.*/,""))
+# get recipients
+group_name = mail['delivered_to'].value.gsub(/@.*/,"")
+recipients = getGroupMembers(group_name)
+if recipients.nil?
+  	L_ERR "#{mail.message_id}: error getting group-members for groupname '#{group_name}'"
+	saveFailedMail(input)
+	exit(1)
+end
+
 recipients.each do |user|
-	tmp_crypt = encryptBody(user, mail.body.to_s)
-	if tmp_crypt.nil?
-		newMail = Mail.new()
-		newMail.body = mail.body
-	else
-		newMail = createCryptedMultipartMail(tmp_crypt)
-	end
 
-	# other stuff
-	newMail.from = mail.from
-	newMail.subject = mail.subject
-	newMail.to = user
+	# add the content-type to the body before encryption
+	bodyForCrypt = ""
+	if !content_type.nil?
+	    bodyForCrypt = "Content-Type: #{content_type.value}\n"
+	end
+	bodyForCrypt = bodyForCrypt + mail.body.to_s
+	cryptedBody = encryptBody(user, bodyForCrypt)
+	if !cryptedBody.nil?
+
+		# send encrypted mail
+		newMail = createCryptedMultipartMail(cryptedBody)
+		newMail.from = mail.from
+		newMail.subject = mail.subject
+		newMail.bcc = user
+		newMail.reply_to = mail.to 
 	
-	# send
-	newMail.delivery_method :sendmail
-	newMail.deliver!
+		# send
+		newMail.delivery_method :sendmail
+		newMail.deliver!
+
+	else 
 	
-	# Delete temp file
-	File.delete(tmp_crypt.path)
+		# send unencrypted mail
+		newMail = Mail.new()
+		newMail.from = mail.from
+		newMail.subject = mail.subject
+		newMail.bcc = user
+		newMail.reply_to = mail.to 
+
+		if FORCE_CRYPT_GROUPS.split.include? (group_name)
+			newMail.body = FORCE_CRYPT_NOTIFICATION
+		else
+			newMail.header['content-type'] = content_type.value unless content_type.nil?
+			newMail.body = mail.body.to_s
+		end
+
+		# send
+		newMail.delivery_method :sendmail
+		newMail.deliver!
+	
+	end
 end
 
