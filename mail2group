@@ -165,6 +165,8 @@ recipients.each do |user|
 	bodyForCrypt = ""
 	if !content_type.nil?
 	    bodyForCrypt = "Content-Type: #{content_type.value}\n"
+	else
+		bodyForCrypt = "Content-Type: text/plain; charset=us-ascii\n"
 	end
 	bodyForCrypt = bodyForCrypt + mail.body.to_s
 	cryptedBody = encryptBody(user, bodyForCrypt)
